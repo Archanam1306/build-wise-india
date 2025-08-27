@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Plus, ArrowLeft, User } from 'lucide-react';
 import { mockUsers } from '@/data/mockData';
+import { getAuth } from "firebase/auth";
+import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { app } from "../../fireconfig";
+import { useAuth } from '@/contexts/AuthContext';
+
+const db = getFirestore(app);
 
 const CreateProject = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  useEffect(() => {
+    // Only allow contractors to access this page
+    if (!user || user.role !== 'contractor') {
+      setAccessDenied(true);
+    }
+  }, [user]);
+
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -30,9 +46,10 @@ const CreateProject = () => {
     (!user.assignedProjects || user.assignedProjects.length === 0)
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (accessDenied) return;
+
     if (!formData.name || !formData.location || !formData.totalBudget) {
       toast({
         title: "Error",
@@ -61,47 +78,37 @@ const CreateProject = () => {
       return;
     }
 
-    // Simulate project creation
-    let assignedSiteManager;
-    
-    // Check if we need to create a new site manager or use existing one
-    if (formData.siteManagerName && formData.siteManagerEmail) {
-      const existingSiteManager = mockUsers.find(u => 
-        u.role === 'site-manager' && u.email === formData.siteManagerEmail
-      );
-      
-      if (existingSiteManager) {
-        assignedSiteManager = existingSiteManager;
-      } else {
-        // This would create a new site manager in a real app
-        assignedSiteManager = {
-          id: `sm${Date.now()}`,
-          name: formData.siteManagerName,
-          email: formData.siteManagerEmail,
-          role: 'site-manager' as const,
-          phone: "N/A"
-        };
-      }
-    } else {
-      // If no site manager details provided, assign a random one
-      const siteManagers = mockUsers.filter(u => u.role === 'site-manager');
-      assignedSiteManager = siteManagers[Math.floor(Math.random() * siteManagers.length)];
+    try {
+      // Save project to Firestore
+      await addDoc(collection(db, "projects"), {
+        ...formData,
+        contractorId: user ? user.id : null,
+        role: "contractor",
+        createdAt: new Date()
+      });
+
+      toast({
+        title: "Project Created!",
+        description: `${formData.name} has been created.`,
+      });
+
+      navigate('/contractor/projects');
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to create project.",
+        variant: "destructive",
+      });
     }
-
-    // Get assigned customer if one was selected
-    let assignedCustomer;
-    if (formData.customerId) {
-      assignedCustomer = mockUsers.find(u => u.id === formData.customerId);
-    }
-
-    toast({
-      title: "Project Created!",
-      description: `${formData.name} has been created and assigned to ${assignedSiteManager.name}${assignedCustomer ? ` and customer ${assignedCustomer.name}` : ''}`,
-    });
-
-    // Navigate back to projects
-    navigate('/contractor/projects');
   };
+
+  if (accessDenied) {
+    return (
+      <div className="p-6 text-center text-red-500 text-xl font-bold">
+        You don't have access to add a project.
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -261,6 +268,7 @@ const CreateProject = () => {
               <Button 
                 type="submit" 
                 className="bg-blue-600 hover:bg-blue-700"
+                disabled={accessDenied}
               >
                 Create Project
               </Button>
@@ -281,3 +289,4 @@ const CreateProject = () => {
 };
 
 export default CreateProject;
+

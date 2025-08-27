@@ -1,24 +1,47 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockProjects } from '@/data/mockData';
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { app } from "../../fireconfig";
+import { useAuth } from '@/contexts/AuthContext';
 import { Search, Filter, Calendar, MapPin, User, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ProjectDetailsModal from '@/components/modals/ProjectDetailsModal';
 import { Project } from '@/types';
+
+const db = getFirestore(app);
 
 const ContractorProjects = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredProjects = mockProjects.filter(project => {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!user) return;
+      setLoading(true);
+      const q = query(collection(db, "projects"), where("contractorId", "==", user.id));
+      const querySnapshot = await getDocs(q);
+      const projectsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        projectsData.push({ id: doc.id, ...doc.data() });
+      });
+      setProjects(projectsData as Project[]);
+      setLoading(false);
+    };
+    fetchProjects();
+  }, [user]);
+
+  const filteredProjects = projects.filter(project => {
     const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          project.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
@@ -92,6 +115,9 @@ const ContractorProjects = () => {
           </h2>
         </div>
 
+        {loading ? (
+          <div className="text-gray-400 text-center py-8">Loading projects...</div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredProjects.map((project) => (
             <Card key={project.id} className="bg-gray-900 border-gray-800 hover:border-blue-500/50 transition-colors">
@@ -112,33 +138,49 @@ const ContractorProjects = () => {
               <CardContent className="space-y-4">
                 <p className="text-gray-300 text-sm">{project.description}</p>
                 
+                {/* Assigned Site Manager */}
+                {project.siteManagerId && (
+                  <div className="flex items-center gap-2 text-blue-300 text-sm">
+                    <User className="h-4 w-4" />
+                    Site Manager ID: {project.siteManagerId}
+                  </div>
+                )}
+
+                {/* Assigned Customer */}
+                {project.customerId && project.customerId !== "none" && (
+                  <div className="flex items-center gap-2 text-green-300 text-sm">
+                    <User className="h-4 w-4" />
+                    Customer ID: {project.customerId}
+                  </div>
+                )}
+
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-400">Overall Progress</span>
-                    <span className="text-white">{project.progress}%</span>
+                    <span className="text-white">{project.progress ? project.progress : 0}%</span>
                   </div>
-                  <Progress value={project.progress} className="h-2" />
+                  <Progress value={project.progress ? project.progress : 0} className="h-2" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <div>
                       <p className="text-gray-400 text-sm">Total Budget</p>
-                      <p className="text-white font-medium">₹{(project.totalBudget / 100000).toFixed(1)}L</p>
+                      <p className="text-white font-medium">₹{project.totalBudget ? (Number(project.totalBudget) / 100000).toFixed(1) : "0"}L</p>
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm">Amount Spent</p>
-                      <p className="text-white font-medium">₹{(project.spentAmount / 100000).toFixed(1)}L</p>
+                      <p className="text-white font-medium">₹{project.spentAmount ? (Number(project.spentAmount) / 100000).toFixed(1) : "0"}L</p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <p className="text-gray-400 text-sm">Start Date</p>
-                      <p className="text-white font-medium">{new Date(project.startDate).toLocaleDateString()}</p>
+                      <p className="text-white font-medium">{project.startDate ? new Date(project.startDate).toLocaleDateString() : "-"}</p>
                     </div>
                     <div>
                       <p className="text-gray-400 text-sm">Est. Completion</p>
-                      <p className="text-white font-medium">{new Date(project.estimatedCompletion).toLocaleDateString()}</p>
+                      <p className="text-white font-medium">{project.estimatedCompletion ? new Date(project.estimatedCompletion).toLocaleDateString() : "-"}</p>
                     </div>
                   </div>
                 </div>
@@ -146,7 +188,7 @@ const ContractorProjects = () => {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                   <div className="flex items-center text-sm text-gray-400">
                     <Calendar className="h-4 w-4 mr-2" />
-                    Updated: {new Date(project.lastUpdate).toLocaleDateString()}
+                    Updated: {project.lastUpdate ? new Date(project.lastUpdate).toLocaleDateString() : "-"}
                   </div>
                   <div className="flex gap-2">
                     <Button 
@@ -163,8 +205,9 @@ const ContractorProjects = () => {
             </Card>
           ))}
         </div>
+        )}
 
-        {filteredProjects.length === 0 && (
+        {filteredProjects.length === 0 && !loading && (
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="text-center py-12">
               <div className="text-gray-400">

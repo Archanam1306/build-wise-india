@@ -1,19 +1,42 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { mockProjects } from '@/data/mockData';
 import { Building, Users, CreditCard, Calendar, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { app } from "../../fireconfig";
+import { useAuth } from '@/contexts/AuthContext';
+
+const db = getFirestore(app);
 
 const ContractorDashboard = () => {
-  const totalProjects = mockProjects.length;
-  const activeProjects = mockProjects.filter(p => p.status === 'In Progress').length;
-  const completedProjects = mockProjects.filter(p => p.status === 'Completed').length;
-  const totalBudget = mockProjects.reduce((sum, p) => sum + p.totalBudget, 0);
-  const totalSpent = mockProjects.reduce((sum, p) => sum + p.spentAmount, 0);
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!user) return;
+      setLoading(true);
+      const q = query(collection(db, "projects"), where("contractorId", "==", user.id));
+      const querySnapshot = await getDocs(q);
+      const projectsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        projectsData.push({ id: doc.id, ...doc.data() });
+      });
+      setProjects(projectsData);
+      setLoading(false);
+    };
+    fetchProjects();
+  }, [user]);
+
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter(p => p.status === 'In Progress').length;
+  const completedProjects = projects.filter(p => p.status === 'Completed').length;
+  const totalBudget = projects.reduce((sum, p) => sum + (Number(p.totalBudget) || 0), 0);
+  const totalSpent = projects.reduce((sum, p) => sum + (Number(p.spentAmount) || 0), 0);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -124,8 +147,11 @@ const ContractorDashboard = () => {
             </Link>
           </div>
 
+          {loading ? (
+            <div className="text-gray-400 text-center py-8">Loading projects...</div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockProjects.map((project) => (
+            {projects.map((project) => (
               <Card key={project.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors">
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -155,10 +181,10 @@ const ContractorDashboard = () => {
                   <div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-400">Progress</span>
-                      <span className="text-white">{project.progress}%</span>
+                      <span className="text-white">{project.progress ? project.progress : 0}%</span>
                     </div>
                     <Progress 
-                      value={project.progress} 
+                      value={project.progress ? project.progress : 0} 
                       className="h-3"
                     />
                   </div>
@@ -166,24 +192,25 @@ const ContractorDashboard = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-400">Budget</p>
-                      <p className="text-white font-medium">{formatCurrency(project.totalBudget)}</p>
+                      <p className="text-white font-medium">{formatCurrency(Number(project.totalBudget) || 0)}</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Spent</p>
-                      <p className="text-white font-medium">{formatCurrency(project.spentAmount)}</p>
+                      <p className="text-white font-medium">{formatCurrency(Number(project.spentAmount) || 0)}</p>
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-gray-700">
                     <div className="flex items-center text-sm text-gray-400">
                       <Calendar className="h-4 w-4 mr-2" />
-                      Last updated: {new Date(project.lastUpdate).toLocaleDateString()}
+                      Last updated: {project.lastUpdate ? new Date(project.lastUpdate).toLocaleDateString() : "-"}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { app } from "../fireconfig";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +15,9 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
+
+  const auth = getAuth(app);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,30 +32,25 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      const success = await login(email, password, role);
-      
-      if (success) {
-        toast({
-          title: "Welcome!",
-          description: "Login successful",
-        });
-        
-        // Redirect based on role
-        switch (role) {
-          case 'contractor':
-            navigate('/contractor');
-            break;
-          case 'site-manager':
-            navigate('/site-manager');
-            break;
-          case 'customer':
-            navigate('/customer');
-            break;
-          default:
-            navigate('/');
-        }
-      } else {
-        throw new Error('Invalid credentials');
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({
+        title: "Welcome!",
+        description: "Login successful",
+      });
+
+      // Redirect based on role
+      switch (role) {
+        case 'contractor':
+          navigate('/contractor');
+          break;
+        case 'site-manager':
+          navigate('/site-manager');
+          break;
+        case 'customer':
+          navigate('/customer');
+          break;
+        default:
+          navigate('/');
       }
     } catch (error) {
       toast({
@@ -197,3 +193,4 @@ const Login = () => {
 };
 
 export default Login;
+  
