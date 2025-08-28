@@ -29,7 +29,8 @@ const ContractorProjects = () => {
     const fetchProjects = async () => {
       if (!user) return;
       setLoading(true);
-      const q = query(collection(db, "projects"), where("contractorId", "==", user.id));
+      // Fetch all projects, not just those assigned to this contractor
+      const q = collection(db, "projects");
       const querySnapshot = await getDocs(q);
       const projectsData: any[] = [];
       querySnapshot.forEach((doc) => {

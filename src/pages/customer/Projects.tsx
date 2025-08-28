@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -8,23 +7,51 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockProjects } from '@/data/mockData';
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { app } from "../../fireconfig";
 import { Calendar, MapPin, Search, Filter, Eye, IndianRupee } from 'lucide-react';
+
+const db = getFirestore(app);
 
 const CustomerProjects = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [customerProjects, setCustomerProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter projects where customer is the current user
-  const customerProjects = mockProjects.filter(project => project.customerId === user?.id);
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!user) return;
+      setLoading(true);
+      // Try to fetch projects where customerId matches user.id
+      let q = query(collection(db, "projects"), where("customerId", "==", user.id));
+      let querySnapshot = await getDocs(q);
+      let projectsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        projectsData.push({ id: doc.id, ...doc.data() });
+      });
+
+      // If no projects found, try matching by customerEmail as fallback
+      if (projectsData.length === 0 && user.email) {
+        q = query(collection(db, "projects"), where("customerEmail", "==", user.email));
+        querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          projectsData.push({ id: doc.id, ...doc.data() });
+        });
+      }
+
+      setCustomerProjects(projectsData);
+      setLoading(false);
+    };
+    fetchProjects();
+  }, [user]);
 
   // Filter projects based on search and filters
   const filteredProjects = customerProjects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = project.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
-    
     return matchesSearch && matchesStatus;
   });
 
@@ -62,6 +89,12 @@ const CustomerProjects = () => {
     };
     return imageMap[projectName] || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=500&h=300&fit=crop';
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 text-center text-gray-400">Loading your projects...</div>
+    );
+  }
 
   if (customerProjects.length === 0) {
     return (
@@ -132,89 +165,93 @@ const CustomerProjects = () => {
 
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredProjects.map((project) => (
-          <Card key={project.id} className="bg-gray-900 border-gray-800 hover:border-blue-500/50 transition-colors">
-            <CardHeader>
-              <div className="flex justify-between items-start">
+        {filteredProjects.map((project) => {
+          const completedTasks = (project.ganttTasks || []).filter((t: any) => t.status === 'completed').length;
+          const totalTasks = (project.ganttTasks || []).length;
+          return (
+            <Card key={project.id} className="bg-gray-900 border-gray-800 hover:border-blue-500/50 transition-colors">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-white text-lg">{project.name}</CardTitle>
+                    <div className="flex items-center text-gray-400 text-sm mt-1">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      {project.location}
+                    </div>
+                  </div>
+                  <Badge className={getStatusColor(project.status)}>
+                    {project.status}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Project Image */}
+                <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
+                  <img 
+                    src={getProjectImage(project.name)}
+                    alt={project.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=500&h=300&fit=crop';
+                    }}
+                  />
+                </div>
+
                 <div>
-                  <CardTitle className="text-white text-lg">{project.name}</CardTitle>
-                  <div className="flex items-center text-gray-400 text-sm mt-1">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    {project.location}
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-400">Progress</span>
+                    <span className="text-white">{project.progress}%</span>
+                  </div>
+                  <Progress 
+                    value={project.progress} 
+                    className="h-3 bg-gray-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-400">Budget</p>
+                    <p className="text-white font-medium flex items-center">
+                      <IndianRupee className="h-3 w-3 mr-1" />
+                      {formatCurrency(project.totalBudget)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Spent</p>
+                    <p className="text-white font-medium flex items-center">
+                      <IndianRupee className="h-3 w-3 mr-1" />
+                      {formatCurrency(project.spentAmount)}
+                    </p>
                   </div>
                 </div>
-                <Badge className={getStatusColor(project.status)}>
-                  {project.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Project Image */}
-              <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
-                <img 
-                  src={getProjectImage(project.name)}
-                  alt={project.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=500&h=300&fit=crop';
-                  }}
-                />
-              </div>
 
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-400">Progress</span>
-                  <span className="text-white">{project.progress}%</span>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-400">Start Date</p>
+                    <p className="text-white">{project.startDate ? new Date(project.startDate).toLocaleDateString() : "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Est. Completion</p>
+                    <p className="text-white">{project.estimatedCompletion ? new Date(project.estimatedCompletion).toLocaleDateString() : "-"}</p>
+                  </div>
                 </div>
-                <Progress 
-                  value={project.progress} 
-                  className="h-3 bg-gray-800"
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-400">Budget</p>
-                  <p className="text-white font-medium flex items-center">
-                    <IndianRupee className="h-3 w-3 mr-1" />
-                    {formatCurrency(project.totalBudget)}
-                  </p>
+                <div className="pt-2 border-t border-gray-800">
+                  <div className="flex items-center text-sm text-gray-400">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Last updated: {project.lastUpdate ? new Date(project.lastUpdate).toLocaleDateString() : "-"}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-400">Spent</p>
-                  <p className="text-white font-medium flex items-center">
-                    <IndianRupee className="h-3 w-3 mr-1" />
-                    {formatCurrency(project.spentAmount)}
-                  </p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-400">Start Date</p>
-                  <p className="text-white">{new Date(project.startDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Est. Completion</p>
-                  <p className="text-white">{new Date(project.estimatedCompletion).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-gray-800">
-                <div className="flex items-center text-sm text-gray-400">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Last updated: {new Date(project.lastUpdate).toLocaleDateString()}
-                </div>
-              </div>
-
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                <Eye className="h-4 w-4 mr-2" />
-                View Project Details
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Project Details
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {filteredProjects.length === 0 && (

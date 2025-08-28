@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
@@ -9,6 +8,7 @@ import MainLayout from '@/components/Layout/MainLayout';
 // Static Pages
 import Index from '@/pages/Index';
 import Login from '@/pages/Login';
+import Signup from '@/pages/signup';
 import AboutUs from '@/pages/static/AboutUs';
 import Contact from '@/pages/static/Contact';
 import Policy from '@/pages/static/Policy';
@@ -37,7 +37,7 @@ import SiteManagerGantt from '@/pages/site-manager/GanttChart';
 import SiteManagerContacts from '@/pages/site-manager/Contacts';
 
 // Customer Pages
-import CustomerDashboard from '@/pages/customer/Dashboard';
+import CustomerDashboard from '@/pages/customer/Customer-Dash';
 import CustomerProjects from '@/pages/customer/Projects';
 import CustomerDailyUpdates from '@/pages/customer/DailyUpdates';
 import CustomerPayments from '@/pages/customer/Payments';
@@ -56,6 +56,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/policy" element={<Policy />} />
@@ -212,6 +213,7 @@ function App() {
               </MainLayout>
             </ProtectedRoute>
           } />
+          
           <Route path="/customer/projects" element={
             <ProtectedRoute allowedRoles={['customer']}>
               <MainLayout>

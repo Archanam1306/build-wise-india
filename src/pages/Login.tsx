@@ -2,26 +2,28 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { app } from "../fireconfig";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { HardHat, Mail, Lock, UserCheck } from 'lucide-react';
+import { HardHat, Mail, Lock } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const auth = getAuth(app);
+  const db = getFirestore(app);
+  const { setUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !role) {
+    if (!email || !password) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -32,30 +34,51 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Fetch user role from Firestore using email
+      const q = query(collection(db, "users"), where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        throw new Error("User record not found in database.");
+      }
+      const userData = querySnapshot.docs[0].data();
+      let role = userData.role;
+      role = typeof role === "string" ? role.toLowerCase().trim() : "";
+
+      // Set user in AuthContext so ProtectedRoute works
+      setUser({
+        id: userCredential.user.uid,
+        email: userCredential.user.email || "",
+        role,
+        name: userData.name || "",
+        phone: userData.phone || "",
+      });
+
       toast({
         title: "Welcome!",
         description: "Login successful",
       });
 
-      // Redirect based on role
-      switch (role) {
-        case 'contractor':
-          navigate('/contractor');
-          break;
-        case 'site-manager':
-          navigate('/site-manager');
-          break;
-        case 'customer':
-          navigate('/customer');
-          break;
-        default:
-          navigate('/');
-      }
-    } catch (error) {
+      // Wait for setUser to complete before navigating
+      setTimeout(() => {
+        switch (role) {
+          case 'contractor':
+            navigate('/contractor');
+            break;
+          case 'site-manager':
+            navigate('/site-manager');
+            break;
+          case 'customer':
+            navigate('/customer');
+            break;
+          default:
+            navigate('/');
+        }
+      }, 100); // Small delay to ensure AuthContext updates before ProtectedRoute checks
+    } catch (error: any) {
       toast({
         title: "Login Failed",
-        description: "Invalid credentials or role mismatch",
+        description: error.message || "Invalid credentials",
         variant: "destructive",
       });
     } finally {
@@ -63,10 +86,9 @@ const Login = () => {
     }
   };
 
-  const handleDemoLogin = (demoRole: string, demoEmail: string) => {
+  const handleDemoLogin = (demoEmail: string) => {
     setEmail(demoEmail);
     setPassword('demo123');
-    setRole(demoRole);
   };
 
   return (
@@ -120,29 +142,6 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-gray-200">Role</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                    <div className="flex items-center">
-                      <UserCheck className="h-4 w-4 mr-2 text-gray-400" />
-                      <SelectValue placeholder="Select your role" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="contractor" className="text-white hover:bg-gray-700">
-                      Contractor
-                    </SelectItem>
-                    <SelectItem value="site-manager" className="text-white hover:bg-gray-700">
-                      Site Manager
-                    </SelectItem>
-                    <SelectItem value="customer" className="text-white hover:bg-gray-700">
-                      Customer (Land Owner)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <Button 
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700"
@@ -160,21 +159,21 @@ const Login = () => {
               <div className="grid grid-cols-1 gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => handleDemoLogin('contractor', 'contractor@buildtech.com')}
+                  onClick={() => handleDemoLogin('contractor@buildtech.com')}
                   className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
                 >
                   Demo Contractor
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => handleDemoLogin('site-manager', 'siteman1@buildtech.com')}
+                  onClick={() => handleDemoLogin('siteman1@buildtech.com')}
                   className="text-green-400 border-green-400 hover:bg-green-400/10"
                 >
                   Demo Site Manager
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => handleDemoLogin('customer', 'customer1@gmail.com')}
+                  onClick={() => handleDemoLogin('customer1@gmail.com')}
                   className="text-orange-400 border-orange-400 hover:bg-orange-400/10"
                 >
                   Demo Customer
@@ -193,4 +192,3 @@ const Login = () => {
 };
 
 export default Login;
-  

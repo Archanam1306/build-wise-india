@@ -8,9 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Plus, ArrowLeft, User } from 'lucide-react';
-import { mockUsers } from '@/data/mockData';
 import { getAuth } from "firebase/auth";
-import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { app } from "../../fireconfig";
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,6 +19,7 @@ const CreateProject = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [accessDenied, setAccessDenied] = useState(false);
+  const [availableCustomers, setAvailableCustomers] = useState<any[]>([]);
 
   useEffect(() => {
     // Only allow contractors to access this page
@@ -27,6 +27,20 @@ const CreateProject = () => {
       setAccessDenied(true);
     }
   }, [user]);
+
+  useEffect(() => {
+    // Fetch customers from Firestore where role is 'customer'
+    const fetchCustomers = async () => {
+      const q = query(collection(db, "users"), where("role", "==", "customer"));
+      const querySnapshot = await getDocs(q);
+      const customers: any[] = [];
+      querySnapshot.forEach((doc) => {
+        customers.push({ id: doc.id, ...doc.data() });
+      });
+      setAvailableCustomers(customers);
+    };
+    fetchCustomers();
+  }, []);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -39,12 +53,6 @@ const CreateProject = () => {
     siteManagerEmail: '',
     customerId: ''
   });
-
-  // Get available customers (those without assigned projects)
-  const availableCustomers = mockUsers.filter(user => 
-    user.role === 'customer' && 
-    (!user.assignedProjects || user.assignedProjects.length === 0)
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,7 +217,7 @@ const CreateProject = () => {
                     <SelectItem value="none" className="text-white">None</SelectItem>
                     {availableCustomers.map(customer => (
                       <SelectItem key={customer.id} value={customer.id} className="text-white">
-                        {customer.name} ({customer.email})
+                        {customer.name || customer.email} ({customer.email})
                       </SelectItem>
                     ))}
                   </SelectContent>

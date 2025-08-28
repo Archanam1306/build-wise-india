@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Building, Users, CreditCard, Calendar, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { app } from "../../fireconfig";
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,9 +18,9 @@ const ContractorDashboard = () => {
 
   useEffect(() => {
     const fetchProjects = async () => {
-      if (!user) return;
       setLoading(true);
-      const q = query(collection(db, "projects"), where("contractorId", "==", user.id));
+      // Fetch all projects from Firestore (not just those assigned to this contractor)
+      const q = collection(db, "projects");
       const querySnapshot = await getDocs(q);
       const projectsData: any[] = [];
       querySnapshot.forEach((doc) => {
@@ -30,7 +30,7 @@ const ContractorDashboard = () => {
       setLoading(false);
     };
     fetchProjects();
-  }, [user]);
+  }, []);
 
   const totalProjects = projects.length;
   const activeProjects = projects.filter(p => p.status === 'In Progress').length;
