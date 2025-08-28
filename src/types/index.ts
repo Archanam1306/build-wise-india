@@ -14,6 +14,8 @@ export interface Project {
   status: 'In Progress' | 'Completed' | 'On Hold' | 'Planning';
   progress: number;
   siteManagerId: string;
+  siteManagerEmail: string;
+  siteManagerName: string;
   customerId: string;
   contractorId: string;
   startDate: string;

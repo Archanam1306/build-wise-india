@@ -1,14 +1,16 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockProjects } from '@/data/mockData';
 import { Package, AlertTriangle, TrendingUp, TrendingDown, Plus, Search } from 'lucide-react';
 import UpdateStockModal from '@/components/modals/UpdateStockModal';
 import RequestMaterialModal from '@/components/modals/RequestMaterialModal';
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { app } from "../../fireconfig";
+
+const db = getFirestore(app);
 
 const SiteManagerMaterials = () => {
   const { user } = useAuth();
@@ -16,23 +18,43 @@ const SiteManagerMaterials = () => {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+  const [assignedProjects, setAssignedProjects] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock materials data for site manager's assigned projects
-  const [mockMaterials, setMockMaterials] = useState([
-    { id: 1, name: 'Cement (50kg bags)', quantity: 120, unit: 'bags', threshold: 20, cost: 350, lastUpdated: '2024-01-07', status: 'good' },
-    { id: 2, name: 'Steel Rods (12mm)', quantity: 8, unit: 'tons', threshold: 15, cost: 55000, lastUpdated: '2024-01-06', status: 'low' },
-    { id: 3, name: 'Bricks (Red Clay)', quantity: 5000, unit: 'pieces', threshold: 1000, cost: 8, lastUpdated: '2024-01-06', status: 'good' },
-    { id: 4, name: 'Sand (River Sand)', quantity: 25, unit: 'loads', threshold: 5, cost: 1200, lastUpdated: '2024-01-05', status: 'good' },
-    { id: 5, name: 'Paint (Exterior)', quantity: 2, unit: 'liters', threshold: 10, cost: 850, lastUpdated: '2024-01-07', status: 'critical' },
-    { id: 6, name: 'Tiles (Ceramic)', quantity: 45, unit: 'sq.ft', threshold: 20, cost: 65, lastUpdated: '2024-01-04', status: 'good' },
-    { id: 7, name: 'Electrical Wire', quantity: 500, unit: 'meters', threshold: 100, cost: 12, lastUpdated: '2023-12-30', status: 'good' },
-    { id: 8, name: 'PVC Pipes', quantity: 45, unit: 'pieces', threshold: 25, cost: 125, lastUpdated: '2023-12-15', status: 'good' }
-  ]);
+  useEffect(() => {
+    const fetchProjectsAndMaterials = async () => {
+      if (!user) return;
+      setLoading(true);
+      // Fetch assigned projects by siteManagerEmail
+      const q = query(collection(db, "projects"), where("siteManagerEmail", "==", user.email));
+      const querySnapshot = await getDocs(q);
+      const projectsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        projectsData.push({ id: doc.id, ...doc.data() });
+      });
+      setAssignedProjects(projectsData);
 
-  const assignedProjects = mockProjects.filter(project => project.siteManagerId === user?.id);
-  const activeProject = assignedProjects.find(project => project.status === 'In Progress') || assignedProjects[0];
+      // Gather all materials from assigned projects
+      let allMaterials: any[] = [];
+      projectsData.forEach(project => {
+        (project.materials || []).forEach((material: any) => {
+          allMaterials.push({
+            ...material,
+            projectName: project.name,
+            projectId: project.id
+          });
+        });
+      });
+      setMaterials(allMaterials);
+      setLoading(false);
+    };
+    fetchProjectsAndMaterials();
+  }, [user]);
 
-  const filteredMaterials = mockMaterials.filter(material =>
+  const activeProject = assignedProjects[0];
+
+  const filteredMaterials = materials.filter(material =>
     material.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -55,7 +77,7 @@ const SiteManagerMaterials = () => {
   };
 
   const handleUpdateStock = (id: number, newQuantity: number) => {
-    setMockMaterials(prev => prev.map(material => {
+    setMaterials(prev => prev.map(material => {
       if (material.id === id) {
         const updatedMaterial = { ...material, quantity: newQuantity };
         if (newQuantity <= material.threshold / 2) {
@@ -82,6 +104,14 @@ const SiteManagerMaterials = () => {
     critical: filteredMaterials.filter(m => m.status === 'critical').length
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 p-6 text-center text-gray-400">
+        Loading your assigned projects...
+      </div>
+    );
+  }
+
   if (!activeProject) {
     return (
       <div className="p-6">
@@ -98,7 +128,7 @@ const SiteManagerMaterials = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Materials Management</h1>
-          <p className="text-gray-400">Track inventory for {activeProject.name}</p>
+          <p className="text-gray-400">Track inventory for your assigned projects</p>
         </div>
         <Button className="bg-green-600 hover:bg-green-700">
           <Plus className="h-4 w-4 mr-2" />
@@ -171,12 +201,12 @@ const SiteManagerMaterials = () => {
       {/* Materials List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredMaterials.map((material) => (
-          <Card key={material.id} className="bg-gray-900 border-gray-800 hover:border-green-500/50 transition-colors">
+          <Card key={material.id + material.projectId} className="bg-gray-900 border-gray-800 hover:border-green-500/50 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="font-semibold text-white mb-1">{material.name}</h3>
-                  <p className="text-sm text-gray-400">{activeProject.name}</p>
+                  <p className="text-sm text-gray-400">{material.projectName}</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   {getStatusIcon(material)}

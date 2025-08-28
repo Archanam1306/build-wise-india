@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,29 +7,64 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockProjects } from '@/data/mockData';
 import { toast } from '@/hooks/use-toast';
 import { CreditCard, Plus, IndianRupee, Calendar } from 'lucide-react';
+import { getFirestore, collection, query, where, getDocs, addDoc } from "firebase/firestore";
+import { app } from "../../fireconfig";
+
+const db = getFirestore(app);
 
 const SiteManagerPayments = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     type: '',
     amount: '',
-    description: ''
+    description: '',
+    projectId: ''
   });
-  const [paymentRequests, setPaymentRequests] = useState(() => {
-    const assignedProjects = mockProjects.filter(project => project.siteManagerId === user?.id);
-    return assignedProjects.flatMap(project => 
-      project.payments.map(payment => ({
-        ...payment,
-        projectName: project.name
-      }))
-    ).sort((a, b) => new Date(b.raisedDate).getTime() - new Date(a.raisedDate).getTime());
-  });
+  const [assignedProjects, setAssignedProjects] = useState<any[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const assignedProjects = mockProjects.filter(project => project.siteManagerId === user?.id);
-  const activeProject = assignedProjects.find(project => project.status === 'In Progress') || assignedProjects[0];
+  useEffect(() => {
+    const fetchProjectsAndPayments = async () => {
+      if (!user) return;
+      setLoading(true);
+
+      // Fetch assigned projects by siteManagerEmail
+      const q = query(collection(db, "projects"), where("siteManagerEmail", "==", user.email));
+      const querySnapshot = await getDocs(q);
+      const projectsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        projectsData.push({ id: doc.id, ...doc.data() });
+      });
+      setAssignedProjects(projectsData);
+
+      // Fetch payment requests from payments collection for this site manager
+      const paymentsQ = query(
+        collection(db, "payments"),
+        where("siteManagerEmail", "==", user.email)
+      );
+      const paymentsSnapshot = await getDocs(paymentsQ);
+      let allPayments: any[] = [];
+      paymentsSnapshot.forEach((doc) => {
+        allPayments.push({ id: doc.id, ...doc.data() });
+      });
+      allPayments = allPayments.sort((a, b) => new Date(b.raisedDate).getTime() - new Date(a.raisedDate).getTime());
+      setPaymentRequests(allPayments);
+
+      // Set default projectId in form if not set
+      if (projectsData.length && !formData.projectId) {
+        setFormData(f => ({ ...f, projectId: projectsData[0].id }));
+      }
+
+      setLoading(false);
+    };
+    fetchProjectsAndPayments();
+    // eslint-disable-next-line
+  }, [user]);
+
+  const activeProject = assignedProjects.find(p => p.id === formData.projectId) || assignedProjects[0];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -40,9 +74,9 @@ const SiteManagerPayments = () => {
     }).format(amount);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.type || !formData.amount || !formData.description) {
+    if (!formData.type || !formData.amount || !formData.description || !formData.projectId) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -51,21 +85,31 @@ const SiteManagerPayments = () => {
       return;
     }
 
+    const project = assignedProjects.find(p => p.id === formData.projectId);
+    if (!project) return;
+
+    // Prepare payment data with contractor and site manager info
     const newPayment = {
-      id: `pay${Date.now()}`,
       amount: parseInt(formData.amount),
-      type: formData.type as any,
-      status: 'pending' as any,
+      type: formData.type,
+      status: 'pending',
       description: formData.description,
-      raisedDate: new Date().toISOString().split('T')[0],
+      raisedDate: new Date().toISOString(),
       raisedBy: user?.name || 'Site Manager',
-      projectId: activeProject?.id || '',
-      projectName: activeProject?.name || 'Project'
+      siteManagerEmail: user?.email || '',
+      siteManagerName: user?.name || '',
+      projectId: project.id,
+      projectName: project.name,
+      contractorId: project.contractorId || '',
     };
 
-    setPaymentRequests(prev => [newPayment, ...prev]);
-    setFormData({ type: '', amount: '', description: '' });
-    
+    // Store payment in Firestore payments collection
+    const docRef = await addDoc(collection(db, "payments"), newPayment);
+
+    // Optimistically update UI
+    setPaymentRequests(prev => [{ ...newPayment, id: docRef.id }, ...prev]);
+    setFormData({ type: '', amount: '', description: '', projectId: formData.projectId });
+
     toast({
       title: "Success!",
       description: `Payment request for ${formatCurrency(parseInt(formData.amount))} has been raised`,
@@ -92,7 +136,15 @@ const SiteManagerPayments = () => {
     return colors[type] || colors['labour'];
   };
 
-  if (!activeProject) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 p-6 text-center text-gray-400">
+        Loading your assigned projects...
+      </div>
+    );
+  }
+
+  if (!assignedProjects.length) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -107,7 +159,7 @@ const SiteManagerPayments = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Raise Payment Request</h1>
-        <p className="text-gray-400">Request payments for {activeProject.name}</p>
+        <p className="text-gray-400">Request payments for your assigned projects</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -121,6 +173,25 @@ const SiteManagerPayments = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="project" className="text-gray-200">Project</Label>
+                <Select
+                  value={formData.projectId}
+                  onValueChange={(value) => setFormData({ ...formData, projectId: value })}
+                >
+                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    {assignedProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id} className="text-white">
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="type" className="text-gray-200">Payment Type</Label>
                 <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
@@ -192,6 +263,7 @@ const SiteManagerPayments = () => {
                     {formatCurrency(payment.amount)}
                   </div>
                 </div>
+                <div className="text-xs text-gray-400 mb-1 font-semibold">{payment.projectName}</div>
                 <p className="text-sm text-gray-300 mb-2">{payment.description}</p>
                 <div className="flex items-center text-xs text-gray-500">
                   <Calendar className="h-3 w-3 mr-1" />

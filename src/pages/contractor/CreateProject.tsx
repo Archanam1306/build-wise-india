@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Plus, ArrowLeft, User } from 'lucide-react';
 import { getAuth } from "firebase/auth";
-import { getFirestore, collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 import { app } from "../../fireconfig";
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,6 +20,7 @@ const CreateProject = () => {
   const { user } = useAuth();
   const [accessDenied, setAccessDenied] = useState(false);
   const [availableCustomers, setAvailableCustomers] = useState<any[]>([]);
+  const [availableSiteManagers, setAvailableSiteManagers] = useState<any[]>([]);
 
   useEffect(() => {
     // Only allow contractors to access this page
@@ -40,6 +41,18 @@ const CreateProject = () => {
       setAvailableCustomers(customers);
     };
     fetchCustomers();
+
+    // Fetch site managers from Firestore where role is 'site-manager'
+    const fetchSiteManagers = async () => {
+      const q = query(collection(db, "users"), where("role", "==", "site-manager"));
+      const querySnapshot = await getDocs(q);
+      const siteManagers: any[] = [];
+      querySnapshot.forEach((doc) => {
+        siteManagers.push({ id: doc.id, ...doc.data() });
+      });
+      setAvailableSiteManagers(siteManagers);
+    };
+    fetchSiteManagers();
   }, []);
 
   const [formData, setFormData] = useState({
@@ -87,21 +100,57 @@ const CreateProject = () => {
     }
 
     try {
-      // Save project to Firestore
-      await addDoc(collection(db, "projects"), {
-        ...formData,
-        contractorId: user ? user.id : null,
+      // Create project data with only defined values
+      const projectData: any = {
+        name: formData.name,
+        location: formData.location,
+        status: formData.status,
+        totalBudget: parseInt(formData.totalBudget) || 0,
+        contractorId: user?.id || '',
+        contractorName: user?.name || '',
+        contractorEmail: user?.email || '',
+        progress: 0,
+        startDate: new Date().toISOString(),
         role: "contractor",
         createdAt: new Date()
+      };
+
+      // Only add optional fields if they have values
+      if (formData.description && formData.description.trim()) {
+        projectData.description = formData.description.trim();
+      }
+      
+      if (formData.estimatedCompletion) {
+        projectData.estimatedCompletion = formData.estimatedCompletion;
+      }
+      
+      if (formData.siteManagerName && formData.siteManagerName.trim()) {
+        projectData.siteManagerName = formData.siteManagerName.trim();
+      }
+      
+      if (formData.siteManagerEmail && formData.siteManagerEmail.trim()) {
+        projectData.siteManagerEmail = formData.siteManagerEmail.trim();
+      }
+      
+      if (formData.customerId && formData.customerId !== 'none') {
+        projectData.customerId = formData.customerId;
+      }
+
+      const docRef = await addDoc(collection(db, "projects"), projectData);
+
+      // Update the project with its own ID as projectId
+      await updateDoc(doc(db, "projects", docRef.id), {
+        projectId: docRef.id
       });
 
       toast({
         title: "Project Created!",
-        description: `${formData.name} has been created.`,
+        description: `${formData.name} has been created with Project ID: ${docRef.id}`,
       });
 
       navigate('/contractor/projects');
     } catch (err: any) {
+      console.error('Error creating project:', err);
       toast({
         title: "Error",
         description: err.message || "Failed to create project.",
@@ -149,7 +198,7 @@ const CreateProject = () => {
                 <Label htmlFor="name" className="text-gray-200">Project Name *</Label>
                 <Input
                   id="name"
-                  value={formData.name}
+                  value={formData.name || ''}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g., Sunrise Villas"
                   className="bg-gray-800 border-gray-700 text-white"
@@ -161,7 +210,7 @@ const CreateProject = () => {
                 <Label htmlFor="location" className="text-gray-200">Location *</Label>
                 <Input
                   id="location"
-                  value={formData.location}
+                  value={formData.location || ''}
                   onChange={(e) => setFormData({...formData, location: e.target.value})}
                   placeholder="e.g., Whitefield, Bangalore"
                   className="bg-gray-800 border-gray-700 text-white"
@@ -201,7 +250,7 @@ const CreateProject = () => {
                 <Input
                   id="completion"
                   type="date"
-                  value={formData.estimatedCompletion}
+                  value={formData.estimatedCompletion || ''}
                   onChange={(e) => setFormData({...formData, estimatedCompletion: e.target.value})}
                   className="bg-gray-800 border-gray-700 text-white"
                 />
@@ -236,7 +285,7 @@ const CreateProject = () => {
                   <Label htmlFor="siteManagerName" className="text-gray-200">Site Manager Name</Label>
                   <Input
                     id="siteManagerName"
-                    value={formData.siteManagerName}
+                    value={formData.siteManagerName || ''}
                     onChange={(e) => setFormData({...formData, siteManagerName: e.target.value})}
                     placeholder="Enter name"
                     className="bg-gray-800 border-gray-700 text-white"
@@ -245,14 +294,28 @@ const CreateProject = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="siteManagerEmail" className="text-gray-200">Site Manager Email</Label>
-                  <Input
-                    id="siteManagerEmail"
-                    type="email"
+                  <Select
                     value={formData.siteManagerEmail}
-                    onChange={(e) => setFormData({...formData, siteManagerEmail: e.target.value})}
-                    placeholder="email@example.com"
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
+                    onValueChange={(value) => {
+                      const selected = availableSiteManagers.find((sm) => sm.email === value);
+                      setFormData({
+                        ...formData,
+                        siteManagerEmail: value,
+                        siteManagerName: selected ? selected.name : "",
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue placeholder="Select site manager" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {availableSiteManagers.map(sm => (
+                        <SelectItem key={sm.id} value={sm.email} className="text-white">
+                          {sm.name || sm.email} ({sm.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
@@ -265,7 +328,7 @@ const CreateProject = () => {
               <Label htmlFor="description" className="text-gray-200">Project Description</Label>
               <Textarea
                 id="description"
-                value={formData.description}
+                value={formData.description || ''}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 placeholder="Brief description of the project..."
                 className="bg-gray-800 border-gray-700 text-white min-h-[100px]"

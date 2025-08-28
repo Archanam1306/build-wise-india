@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +16,17 @@ const SiteManagerBlueprints = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [selectedProject, setSelectedProject] = useState('all');
 
-  // Filter projects assigned to this site manager
-  const assignedProjects = mockProjects.filter(project => project.siteManagerId === user?.id);
+  // Show all mock projects if user is not set or no projects assigned by id
+  const assignedProjects = React.useMemo(() => {
+    if (!user) return mockProjects;
+    const byId = mockProjects.filter(project => project.siteManagerId === user?.id);
+    const byEmail = mockProjects.filter(project => project.siteManagerId === user?.email);
+    // Merge and deduplicate by project id
+    const all = [...byId, ...byEmail].filter(
+      (proj, idx, arr) => arr.findIndex(p => p.id === proj.id) === idx
+    );
+    return all.length > 0 ? all : mockProjects;
+  }, [user]);
 
   // Get all blueprints from assigned projects
   const allBlueprints = assignedProjects.flatMap(project => 
