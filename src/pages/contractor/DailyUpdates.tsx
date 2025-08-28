@@ -1,29 +1,70 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { mockProjects } from '@/data/mockData';
-import { Calendar, Camera, Eye, Filter, ZoomIn } from 'lucide-react';
+import { Camera, Calendar, Filter, ZoomIn, Eye } from 'lucide-react';
 import DailyUpdateDetailsModal from '@/components/modals/DailyUpdateDetailsModal';
 import { DailyUpdate } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { app } from "../../fireconfig";
+
+const db = getFirestore(app);
 
 const DailyUpdates = () => {
+  const { user } = useAuth();
   const [selectedProject, setSelectedProject] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedUpdate, setSelectedUpdate] = useState<(DailyUpdate & { projectName: string, projectId: string }) | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [contractorProjects, setContractorProjects] = useState<any[]>([]);
+  const [allUpdates, setAllUpdates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get all daily updates from all projects
-  const allUpdates = mockProjects.flatMap(project => 
-    project.dailyUpdates.map(update => ({
-      ...update,
-      projectName: project.name,
-      projectId: project.id
-    }))
-  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  useEffect(() => {
+    const fetchProjectsAndUpdates = async () => {
+      if (!user) return;
+      setLoading(true);
+
+      // Fetch projects where contractor email matches current user
+      const projectsQ = query(
+        collection(db, "projects"),
+        where("contractorEmail", "==", user.email)
+      );
+      const projectsSnapshot = await getDocs(projectsQ);
+      const projects: any[] = [];
+      projectsSnapshot.forEach((doc) => {
+        projects.push({ id: doc.id, ...doc.data() });
+      });
+      setContractorProjects(projects);
+
+      // Get project IDs for this contractor
+      const projectIds = projects.map(p => p.id);
+
+      // Fetch daily updates for contractor's projects
+      if (projectIds.length > 0) {
+        const updatesQ = query(collection(db, "dailyUpdates"));
+        const updatesSnapshot = await getDocs(updatesQ);
+        let updates: any[] = [];
+        updatesSnapshot.forEach((doc) => {
+          const updateData: any = { id: doc.id, ...doc.data() };
+          // Filter updates that belong to contractor's projects
+          if (projectIds.includes(updateData.projectId)) {
+            updates.push(updateData);
+          }
+        });
+        
+        // Sort by date descending
+        updates = updates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAllUpdates(updates);
+      }
+
+      setLoading(false);
+    };
+    fetchProjectsAndUpdates();
+  }, [user]);
 
   const filteredUpdates = allUpdates.filter(update => {
     const matchesProject = selectedProject === 'all' || update.projectId === selectedProject;
@@ -58,12 +99,20 @@ const DailyUpdates = () => {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 p-6 text-center text-gray-400">
+        Loading daily updates...
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Daily Updates</h1>
-          <p className="text-gray-400">View progress updates from all construction sites</p>
+          <p className="text-gray-400">View progress updates from your construction sites</p>
         </div>
         <div className="flex items-center space-x-2">
           <Camera className="h-5 w-5 text-blue-400" />
@@ -80,7 +129,7 @@ const DailyUpdates = () => {
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-700">
             <SelectItem value="all" className="text-white">All Projects</SelectItem>
-            {mockProjects.map(project => (
+            {contractorProjects.map(project => (
               <SelectItem key={project.id} value={project.id} className="text-white">
                 {project.name}
               </SelectItem>
@@ -116,6 +165,9 @@ const DailyUpdates = () => {
                   <div className="flex items-center text-gray-400 text-sm">
                     <Calendar className="h-4 w-4 mr-1" />
                     {new Date(update.date).toLocaleDateString()}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Site Manager: {update.siteManagerName}
                   </div>
                 </div>
                 <Badge className={getCategoryColor(update.category)}>
@@ -164,8 +216,8 @@ const DailyUpdates = () => {
               <div className="space-y-2">
                 <p className="text-gray-300 text-sm">{update.caption}</p>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>By: {update.uploadedBy}</span>
-                  <span>{update.images.length} photos</span>
+                  <span>By: {update.siteManagerName}</span>
+                  <span>{update.images?.length || 0} photos</span>
                 </div>
               </div>
 

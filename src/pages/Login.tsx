@@ -34,48 +34,68 @@ const Login = () => {
 
     setIsLoading(true);
     try {
+      console.log('Starting login process...');
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Firebase auth successful');
+      
       // Fetch user role from Firestore using email
       const q = query(collection(db, "users"), where("email", "==", email));
       const querySnapshot = await getDocs(q);
+      
       if (querySnapshot.empty) {
         throw new Error("User record not found in database.");
       }
+      
       const userData = querySnapshot.docs[0].data();
+      const userDoc = querySnapshot.docs[0];
       let role = userData.role;
       role = typeof role === "string" ? role.toLowerCase().trim() : "";
+      
+      console.log('User role found:', role);
 
-      // Set user in AuthContext so ProtectedRoute works
-      setUser({
-        id: userCredential.user.uid,
+      // Set user in AuthContext
+      const userInfo = {
+        id: userDoc.id,
         email: userCredential.user.email || "",
         role,
         name: userData.name || "",
         phone: userData.phone || "",
-      });
+      };
+      
+      console.log('Setting user in context:', userInfo);
+      
+      // Set user in context first
+      setUser(userInfo);
 
       toast({
         title: "Welcome!",
         description: "Login successful",
       });
 
-      // Wait for setUser to complete before navigating
+      // Navigate using React Router instead of window.location
       setTimeout(() => {
         switch (role) {
           case 'contractor':
-            navigate('/contractor');
+            navigate('/contractor', { replace: true });
             break;
           case 'site-manager':
-            navigate('/site-manager');
+            navigate('/site-manager', { replace: true });
             break;
           case 'customer':
-            navigate('/customer');
+            navigate('/customer', { replace: true });
             break;
           default:
-            navigate('/');
+            console.error('Unknown role:', role);
+            toast({
+              title: "Error",
+              description: "Invalid user role. Please contact support.",
+              variant: "destructive",
+            });
+            navigate('/', { replace: true });
         }
-      }, 100); // Small delay to ensure AuthContext updates before ProtectedRoute checks
+      }, 200);
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Login Failed",
         description: error.message || "Invalid credentials",
@@ -192,3 +212,4 @@ const Login = () => {
 };
 
 export default Login;
+  

@@ -1,43 +1,96 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
-import { mockUsers } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  name: string;
+  phone?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
   isAuthenticated: boolean;
-  setUser: (user: User | null) => void; // Add this
+  setUser: (user: User | null) => void;
+  logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('constructionApp_user');
-    if (savedUser) {
-      const userData = JSON.parse(savedUser);
-      setUser(userData);
+    // Check for existing session on component mount
+    const initializeAuth = () => {
+      try {
+        const savedUser = localStorage.getItem('user');
+        const savedAuth = localStorage.getItem('isAuthenticated');
+        
+        console.log('Initializing auth - savedUser:', savedUser, 'savedAuth:', savedAuth);
+        
+        if (savedUser && savedAuth === 'true') {
+          const parsedUser = JSON.parse(savedUser);
+          setUserState(parsedUser);
+          setIsAuthenticated(true);
+          console.log('Restored user session:', parsedUser);
+        } else {
+          setUserState(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('isAuthenticated');
+        setUserState(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  const setUser = useCallback((userData: User | null) => {
+    console.log('AuthContext setUser called with:', userData);
+    
+    if (userData) {
+      setUserState(userData);
       setIsAuthenticated(true);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('isAuthenticated', 'true');
+      console.log('User set successfully, localStorage updated');
+    } else {
+      setUserState(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      console.log('User cleared, localStorage cleaned');
     }
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // This will be handled in the login page now, so just return true for compatibility
-    return true;
-  };
-
-  const logout = () => {
-    setUser(null);
+  const logout = useCallback(() => {
+    console.log('Logout called');
+    setUserState(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('constructionApp_user');
+    localStorage.removeItem('user');
+    localStorage.removeItem('isAuthenticated');
+  }, []);
+
+  const contextValue = {
+    user,
+    isAuthenticated,
+    setUser,
+    logout,
+    loading
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated, setUser }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

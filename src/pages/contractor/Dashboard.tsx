@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Building, Users, CreditCard, Calendar, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "../../fireconfig";
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,19 +18,29 @@ const ContractorDashboard = () => {
 
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!user) return;
       setLoading(true);
-      // Fetch all projects from Firestore (not just those assigned to this contractor)
-      const q = collection(db, "projects");
-      const querySnapshot = await getDocs(q);
-      const projectsData: any[] = [];
-      querySnapshot.forEach((doc) => {
-        projectsData.push({ id: doc.id, ...doc.data() });
-      });
-      setProjects(projectsData);
-      setLoading(false);
+      
+      try {
+        // Fetch only projects belonging to this contractor
+        const q = query(
+          collection(db, "projects"), 
+          where("contractorEmail", "==", user.email)
+        );
+        const querySnapshot = await getDocs(q);
+        const projectsData: any[] = [];
+        querySnapshot.forEach((doc) => {
+          projectsData.push({ id: doc.id, ...doc.data() });
+        });
+        setProjects(projectsData);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchProjects();
-  }, []);
+  }, [user]);
 
   const totalProjects = projects.length;
   const activeProjects = projects.filter(p => p.status === 'In Progress').length;
@@ -73,6 +83,17 @@ const ContractorDashboard = () => {
     return imageMap[projectName] || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=500&h=300&fit=crop';
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your projects...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900">
       <div className="p-6 space-y-6 bg-gray-900 min-h-screen">
@@ -80,7 +101,7 @@ const ContractorDashboard = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-white">Contractor Dashboard</h1>
-            <p className="text-gray-400">Overview of all construction projects</p>
+            <p className="text-gray-400">Overview of your construction projects</p>
           </div>
           <Link to="/contractor/create-project">
             <Button className="bg-blue-600 hover:bg-blue-700">
@@ -90,126 +111,147 @@ const ContractorDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Total Projects</CardTitle>
-              <Building className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{totalProjects}</div>
-              <p className="text-xs text-gray-400">Active portfolio</p>
-            </CardContent>
-          </Card>
+        {projects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-400">Total Projects</CardTitle>
+                <Building className="h-4 w-4 text-blue-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{totalProjects}</div>
+                <p className="text-xs text-gray-400">Active portfolio</p>
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Active Projects</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{activeProjects}</div>
-              <p className="text-xs text-gray-400">Currently in progress</p>
-            </CardContent>
-          </Card>
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-400">Active Projects</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{activeProjects}</div>
+                <p className="text-xs text-gray-400">Currently in progress</p>
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Completed</CardTitle>
-              <Users className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{completedProjects}</div>
-              <p className="text-xs text-gray-400">Successfully delivered</p>
-            </CardContent>
-          </Card>
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-400">Completed</CardTitle>
+                <Users className="h-4 w-4 text-blue-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{completedProjects}</div>
+                <p className="text-xs text-gray-400">Successfully delivered</p>
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Total Budget</CardTitle>
-              <CreditCard className="h-4 w-4 text-green-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{formatCurrency(totalBudget)}</div>
-              <p className="text-xs text-gray-400">{formatCurrency(totalSpent)} spent</p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-400">Total Budget</CardTitle>
+                <CreditCard className="h-4 w-4 text-green-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{formatCurrency(totalBudget)}</div>
+                <p className="text-xs text-gray-400">{formatCurrency(totalSpent)} spent</p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
 
         {/* Projects Grid */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">All Projects</h2>
-            <Link to="/contractor/projects">
-              <Button variant="outline" className="border-blue-400 text-blue-400 hover:bg-blue-400/10">
-                View All Projects
-              </Button>
-            </Link>
+            <h2 className="text-xl font-semibold text-white">Your Projects</h2>
+            {projects.length > 0 && (
+              <Link to="/contractor/projects">
+                <Button variant="outline" className="border-blue-400 text-blue-400 hover:bg-blue-400/10">
+                  View All Projects
+                </Button>
+              </Link>
+            )}
           </div>
 
-          {loading ? (
-            <div className="text-gray-400 text-center py-8">Loading projects...</div>
+          {projects.length === 0 ? (
+            <Card className="bg-gray-800 border-gray-700">
+              <CardContent className="text-center py-12">
+                <Building className="h-16 w-16 mx-auto mb-4 text-gray-600" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Projects Found</h3>
+                <p className="text-gray-400 mb-6">
+                  You don't have any projects yet. Create your first project to get started.
+                </p>
+                <div className="space-y-2 text-sm text-gray-500">
+                  <p>Contractor ID: {user?.id}</p>
+                  <p>Email: {user?.email}</p>
+                </div>
+                <Link to="/contractor/create-project">
+                  <Button className="bg-blue-600 hover:bg-blue-700 mt-4">
+                    Create Your First Project
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <Card key={project.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-white text-lg">{project.name}</CardTitle>
-                      <p className="text-gray-400 text-sm">{project.location}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <Card key={project.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-white text-lg">{project.name}</CardTitle>
+                        <p className="text-gray-400 text-sm">{project.location}</p>
+                      </div>
+                      <Badge className={getStatusColor(project.status)}>
+                        {project.status}
+                      </Badge>
                     </div>
-                    <Badge className={getStatusColor(project.status)}>
-                      {project.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Project Image */}
-                  <div className="aspect-video bg-gray-700 rounded-lg overflow-hidden">
-                    <img 
-                      src={getProjectImage(project.name)}
-                      alt={project.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=500&h=300&fit=crop';
-                      }}
-                    />
-                  </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Project Image */}
+                    <div className="aspect-video bg-gray-700 rounded-lg overflow-hidden">
+                      <img 
+                        src={getProjectImage(project.name)}
+                        alt={project.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=500&h=300&fit=crop';
+                        }}
+                      />
+                    </div>
 
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-400">Progress</span>
-                      <span className="text-white">{project.progress ? project.progress : 0}%</span>
-                    </div>
-                    <Progress 
-                      value={project.progress ? project.progress : 0} 
-                      className="h-3"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-400">Budget</p>
-                      <p className="text-white font-medium">{formatCurrency(Number(project.totalBudget) || 0)}</p>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-400">Progress</span>
+                        <span className="text-white">{project.progress ? project.progress : 0}%</span>
+                      </div>
+                      <Progress 
+                        value={project.progress ? project.progress : 0} 
+                        className="h-3"
+                      />
                     </div>
-                    <div>
-                      <p className="text-gray-400">Spent</p>
-                      <p className="text-white font-medium">{formatCurrency(Number(project.spentAmount) || 0)}</p>
-                    </div>
-                  </div>
 
-                  <div className="pt-2 border-t border-gray-700">
-                    <div className="flex items-center text-sm text-gray-400">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Last updated: {project.lastUpdate ? new Date(project.lastUpdate).toLocaleDateString() : "-"}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-400">Budget</p>
+                        <p className="text-white font-medium">{formatCurrency(Number(project.totalBudget) || 0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Spent</p>
+                        <p className="text-white font-medium">{formatCurrency(Number(project.spentAmount) || 0)}</p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+                    <div className="pt-2 border-t border-gray-700">
+                      <div className="flex items-center text-sm text-gray-400">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Last updated: {project.lastUpdate ? new Date(project.lastUpdate).toLocaleDateString() : "-"}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </div>
       </div>

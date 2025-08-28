@@ -1,45 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockProjects } from '@/data/mockData';
 import { CreditCard, Filter, Calendar, IndianRupee } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { app } from "../../fireconfig";
+
+const db = getFirestore(app);
 
 const Payments = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [payments, setPayments] = useState(() => {
-    // Get all payments from all projects
-    return mockProjects.flatMap(project => 
-      project.payments.map(payment => ({
-        ...payment,
-        projectName: project.name
-      }))
-    ).sort((a, b) => new Date(b.raisedDate).getTime() - new Date(a.raisedDate).getTime());
-  });
+  const [payments, setPayments] = useState<any[]>([]);
+  const [contractorProjects, setContractorProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handlePaymentAction = (paymentId: string, action: 'approve' | 'reject') => {
-    setPayments(prevPayments => 
-      prevPayments.map(payment => {
-        if (payment.id === paymentId) {
-          const newStatus = action === 'approve' ? 'approved' : 'rejected';
-          toast({
-            title: `Payment ${action}d`,
-            description: `Payment of ₹${payment.amount.toLocaleString()} has been ${action}d successfully.`,
-          });
-          return {
-            ...payment,
-            status: newStatus,
-            approvedDate: action === 'approve' ? new Date().toISOString() : undefined
-          };
-        }
-        return payment;
-      })
-    );
+  useEffect(() => {
+    const fetchPaymentsAndProjects = async () => {
+      if (!user) return;
+      setLoading(true);
+
+      // Fetch projects where contractor email matches current user
+      const projectsQ = query(
+        collection(db, "projects"),
+        where("contractorEmail", "==", user.email)
+      );
+      const projectsSnapshot = await getDocs(projectsQ);
+      const projects: any[] = [];
+      projectsSnapshot.forEach((doc) => {
+        projects.push({ id: doc.id, ...doc.data() });
+      });
+      setContractorProjects(projects);
+
+      // Get project IDs for this contractor
+      const projectIds = projects.map(p => p.id);
+
+      // Fetch payment requests for contractor's projects
+      if (projectIds.length > 0) {
+        const paymentsQ = query(collection(db, "payments"));
+        const paymentsSnapshot = await getDocs(paymentsQ);
+        let paymentsData: any[] = [];
+        paymentsSnapshot.forEach((doc) => {
+          const paymentData = { id: doc.id, ...doc.data() } as { id: string; projectId: string; [key: string]: any };
+          // Filter payments that belong to contractor's projects
+          if (projectIds.includes(paymentData.projectId)) {
+            paymentsData.push(paymentData);
+          }
+        });
+        
+        // Sort by date descending
+        paymentsData = paymentsData.sort((a, b) => new Date(b.raisedDate).getTime() - new Date(a.raisedDate).getTime());
+        setPayments(paymentsData);
+      }
+
+      setLoading(false);
+    };
+    fetchPaymentsAndProjects();
+  }, [user]);
+
+  const handlePaymentAction = async (paymentId: string, action: 'approve' | 'reject') => {
+    try {
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      
+      // Update payment status in Firestore
+      await updateDoc(doc(db, "payments", paymentId), {
+        status: newStatus,
+        approvedDate: action === 'approve' ? new Date().toISOString() : undefined,
+        approvedBy: user?.name || 'Contractor'
+      });
+
+      // Update local state
+      setPayments(prevPayments => 
+        prevPayments.map(payment => {
+          if (payment.id === paymentId) {
+            const payment_amount = payment.amount || 0;
+            toast({
+              title: `Payment ${action}d`,
+              description: `Payment of ₹${payment_amount.toLocaleString()} has been ${action}d successfully.`,
+            });
+            return {
+              ...payment,
+              status: newStatus,
+              approvedDate: action === 'approve' ? new Date().toISOString() : undefined,
+              approvedBy: user?.name || 'Contractor'
+            };
+          }
+          return payment;
+        })
+      );
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update payment status",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredPayments = payments.filter(payment => {
@@ -70,12 +132,20 @@ const Payments = () => {
 
   const totalAmount = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 p-6 text-center text-gray-400">
+        Loading payment requests...
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-white">Payment Overview</h1>
-          <p className="text-gray-400">Track all payment requests across projects</p>
+          <h1 className="text-3xl font-bold text-white">Payment Requests</h1>
+          <p className="text-gray-400">Review payment requests from site managers</p>
         </div>
         <div className="text-right">
           <p className="text-sm text-gray-400">Total Amount</p>
@@ -162,7 +232,7 @@ const Payments = () => {
                       <Calendar className="h-4 w-4 mr-1" />
                       Raised: {new Date(payment.raisedDate).toLocaleDateString()}
                     </div>
-                    <div>Raised by: {payment.raisedBy}</div>
+                    <div>Site Manager: {payment.siteManagerName}</div>
                     {payment.approvedDate && (
                       <div>Approved: {new Date(payment.approvedDate).toLocaleDateString()}</div>
                     )}
@@ -172,16 +242,13 @@ const Payments = () => {
                 <div className="text-right space-y-2">
                   <div className="flex items-center text-2xl font-bold text-white">
                     <IndianRupee className="h-5 w-5" />
-                    {payment.amount.toLocaleString()}
+                    {(payment.amount || 0).toLocaleString()}
                   </div>
                   {payment.status === 'pending' && (
                     <div className="space-x-2">
                       <Button 
                         size="sm" 
-                        onClick={() => {
-                          handlePaymentAction(payment.id, 'approve');
-                          navigate(`/payments/${payment.id}/confirm`);
-                        }}
+                        onClick={() => handlePaymentAction(payment.id, 'approve')}
                         className="bg-green-600 hover:bg-green-700 text-white"
                       >
                         Approve

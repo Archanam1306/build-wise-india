@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -29,15 +29,23 @@ const ContractorProjects = () => {
     const fetchProjects = async () => {
       if (!user) return;
       setLoading(true);
-      // Fetch all projects, not just those assigned to this contractor
-      const q = collection(db, "projects");
-      const querySnapshot = await getDocs(q);
-      const projectsData: any[] = [];
-      querySnapshot.forEach((doc) => {
-        projectsData.push({ id: doc.id, ...doc.data() });
-      });
-      setProjects(projectsData as Project[]);
-      setLoading(false);
+      try {
+        // Fetch only projects belonging to this contractor
+        const q = query(
+          collection(db, "projects"), 
+          where("contractorEmail", "==", user.email)
+        );
+        const querySnapshot = await getDocs(q);
+        const projectsData: any[] = [];
+        querySnapshot.forEach((doc) => {
+          projectsData.push({ id: doc.id, ...doc.data() });
+        });
+        setProjects(projectsData as Project[]);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchProjects();
   }, [user]);
@@ -67,13 +75,24 @@ const ContractorProjects = () => {
     setIsDetailsModalOpen(true);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your projects...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-white">All Projects</h1>
-          <p className="text-gray-400">Manage and overview all construction projects</p>
+          <h1 className="text-3xl font-bold text-white">Your Projects</h1>
+          <p className="text-gray-400">Manage your construction projects</p>
         </div>
         <Link to="/contractor/create-project">
           <Button className="bg-blue-600 hover:bg-blue-700">
