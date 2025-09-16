@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { app } from "../fireconfig";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
@@ -172,39 +172,19 @@ const Login = () => {
             </form>
 
             {/* Demo Login Buttons */}
-            <div className="mt-6 space-y-3">
-              <div className="text-center">
-                <p className="text-sm text-gray-400">Quick Demo Login:</p>
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => handleDemoLogin('contractor@buildtech.com')}
-                  className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
-                >
-                  Demo Contractor
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleDemoLogin('siteman1@buildtech.com')}
-                  className="text-green-400 border-green-400 hover:bg-green-400/10"
-                >
-                  Demo Site Manager
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleDemoLogin('customer1@gmail.com')}
-                  className="text-orange-400 border-orange-400 hover:bg-orange-400/10"
-                >
-                  Demo Customer
-                </Button>
-              </div>
-            </div>
+            
+            
           </CardContent>
         </Card>
 
         <div className="text-center text-sm text-gray-400">
           © 2024 BuildTracker. All rights reserved.
+        </div>
+        <div className="text-center mt-2">
+          <span className="text-gray-400">New user? </span>
+          <Link to="/signup" className="text-blue-400 hover:underline">
+            Sign up here
+          </Link>
         </div>
       </div>
     </div>
@@ -212,4 +192,3 @@ const Login = () => {
 };
 
 export default Login;
-  

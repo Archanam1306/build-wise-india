@@ -85,26 +85,26 @@ const ContractorDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading your projects...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your projects...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="p-6 space-y-6 bg-gray-900 min-h-screen">
+    <div className="min-h-screen">
+      <div className="p-6 space-y-6 min-h-screen">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-white">Contractor Dashboard</h1>
-            <p className="text-gray-400">Overview of your construction projects</p>
+            <h1 className="text-3xl font-bold text-gray-900">Contractor Dashboard</h1>
+            <p className="text-gray-600">Overview of your construction projects</p>
           </div>
           <Link to="/contractor/create-project">
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
               Create New Project
             </Button>
           </Link>
@@ -113,47 +113,47 @@ const ContractorDashboard = () => {
         {/* Stats Cards */}
         {projects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className="bg-white border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">Total Projects</CardTitle>
-                <Building className="h-4 w-4 text-blue-400" />
+                <CardTitle className="text-sm font-medium text-gray-600">Total Projects</CardTitle>
+                <Building className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white">{totalProjects}</div>
-                <p className="text-xs text-gray-400">Active portfolio</p>
+                <div className="text-2xl font-bold text-gray-900">{totalProjects}</div>
+                <p className="text-xs text-gray-600">Active portfolio</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className="bg-white border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">Active Projects</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-400" />
+                <CardTitle className="text-sm font-medium text-gray-600">Active Projects</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white">{activeProjects}</div>
-                <p className="text-xs text-gray-400">Currently in progress</p>
+                <div className="text-2xl font-bold text-gray-900">{activeProjects}</div>
+                <p className="text-xs text-gray-600">Currently in progress</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className="bg-white border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">Completed</CardTitle>
-                <Users className="h-4 w-4 text-blue-400" />
+                <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
+                <Users className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white">{completedProjects}</div>
-                <p className="text-xs text-gray-400">Successfully delivered</p>
+                <div className="text-2xl font-bold text-gray-900">{completedProjects}</div>
+                <p className="text-xs text-gray-600">Successfully delivered</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className="bg-white border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">Total Budget</CardTitle>
-                <CreditCard className="h-4 w-4 text-green-400" />
+                <CardTitle className="text-sm font-medium text-gray-600">Total Budget</CardTitle>
+                <CreditCard className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white">{formatCurrency(totalBudget)}</div>
-                <p className="text-xs text-gray-400">{formatCurrency(totalSpent)} spent</p>
+                <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalBudget)}</div>
+                <p className="text-xs text-gray-600">{formatCurrency(totalSpent)} spent</p>
               </CardContent>
             </Card>
           </div>
@@ -162,10 +162,10 @@ const ContractorDashboard = () => {
         {/* Projects Grid */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">Your Projects</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Your Projects</h2>
             {projects.length > 0 && (
               <Link to="/contractor/projects">
-                <Button variant="outline" className="border-blue-400 text-blue-400 hover:bg-blue-400/10">
+                <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
                   View All Projects
                 </Button>
               </Link>
@@ -173,11 +173,11 @@ const ContractorDashboard = () => {
           </div>
 
           {projects.length === 0 ? (
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className="bg-white border-gray-200">
               <CardContent className="text-center py-12">
-                <Building className="h-16 w-16 mx-auto mb-4 text-gray-600" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Projects Found</h3>
-                <p className="text-gray-400 mb-6">
+                <Building className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Projects Found</h3>
+                <p className="text-gray-600 mb-6">
                   You don't have any projects yet. Create your first project to get started.
                 </p>
                 <div className="space-y-2 text-sm text-gray-500">
@@ -185,7 +185,7 @@ const ContractorDashboard = () => {
                   <p>Email: {user?.email}</p>
                 </div>
                 <Link to="/contractor/create-project">
-                  <Button className="bg-blue-600 hover:bg-blue-700 mt-4">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white mt-4">
                     Create Your First Project
                   </Button>
                 </Link>
@@ -194,12 +194,12 @@ const ContractorDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map((project) => (
-                <Card key={project.id} className="bg-gray-800 border-gray-700 hover:border-blue-500/50 transition-colors">
+                <Card key={project.id} className="bg-white border-gray-200 hover:border-blue-400/50 transition-colors">
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-white text-lg">{project.name}</CardTitle>
-                        <p className="text-gray-400 text-sm">{project.location}</p>
+                        <CardTitle className="text-gray-900 text-lg">{project.name}</CardTitle>
+                        <p className="text-gray-600 text-sm">{project.location}</p>
                       </div>
                       <Badge className={getStatusColor(project.status)}>
                         {project.status}
@@ -223,7 +223,7 @@ const ContractorDashboard = () => {
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-gray-400">Progress</span>
-                        <span className="text-white">{project.progress ? project.progress : 0}%</span>
+                        <span className="text-gray-900">{project.progress ? project.progress : 0}%</span>
                       </div>
                       <Progress 
                         value={project.progress ? project.progress : 0} 
@@ -234,15 +234,15 @@ const ContractorDashboard = () => {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <p className="text-gray-400">Budget</p>
-                        <p className="text-white font-medium">{formatCurrency(Number(project.totalBudget) || 0)}</p>
+                        <p className="text-gray-900 font-medium">{formatCurrency(Number(project.totalBudget) || 0)}</p>
                       </div>
                       <div>
                         <p className="text-gray-400">Spent</p>
-                        <p className="text-white font-medium">{formatCurrency(Number(project.spentAmount) || 0)}</p>
+                        <p className="text-gray-900 font-medium">{formatCurrency(Number(project.spentAmount) || 0)}</p>
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-gray-700">
+                    <div className="pt-2 border-t border-gray-300">
                       <div className="flex items-center text-sm text-gray-400">
                         <Calendar className="h-4 w-4 mr-2" />
                         Last updated: {project.lastUpdate ? new Date(project.lastUpdate).toLocaleDateString() : "-"}
