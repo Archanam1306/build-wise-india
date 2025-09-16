@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Building, Users, CreditCard, Calendar, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Building, Users, CreditCard, Calendar, TrendingUp, AlertTriangle, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "../../fireconfig";
@@ -97,26 +97,33 @@ const ContractorDashboard = () => {
   return (
     <div className="min-h-screen">
       <div className="p-6 space-y-6 min-h-screen">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Contractor Dashboard</h1>
-            <p className="text-gray-600">Overview of your construction projects</p>
+        {/* Enhanced Header with Gradient */}
+        <div className="bg-gradient-to-r from-[#1a472a]/5 to-[#2d8659]/5 rounded-2xl p-6 mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome back, {user?.name}
+              </h1>
+              <p className="text-gray-600 mt-1">Overview of your construction projects</p>
+            </div>
+            <Link to="/contractor/create-project">
+              <Button className="bg-gradient-to-r from-[#1a472a] to-[#2d8659] hover:from-[#15391f] hover:to-[#246b47] text-white shadow-sm">
+                <Plus className="h-5 w-5 mr-2" />
+                Create New Project
+              </Button>
+            </Link>
           </div>
-          <Link to="/contractor/create-project">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-              Create New Project
-            </Button>
-          </Link>
         </div>
 
-        {/* Stats Cards */}
+        {/* Enhanced Stats Cards */}
         {projects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Projects</CardTitle>
-                <Building className="h-4 w-4 text-blue-600" />
+                <div className="p-2 bg-gradient-to-r from-[#1a472a]/10 to-[#2d8659]/10 rounded-lg">
+                  <Building className="h-4 w-4 text-[#2d8659]" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{totalProjects}</div>
@@ -124,10 +131,12 @@ const ContractorDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Active Projects</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <div className="p-2 bg-gradient-to-r from-[#1a472a]/10 to-[#2d8659]/10 rounded-lg">
+                  <TrendingUp className="h-4 w-4 text-[#2d8659]" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{activeProjects}</div>
@@ -135,10 +144,12 @@ const ContractorDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
-                <Users className="h-4 w-4 text-blue-600" />
+                <div className="p-2 bg-gradient-to-r from-[#1a472a]/10 to-[#2d8659]/10 rounded-lg">
+                  <Users className="h-4 w-4 text-[#2d8659]" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{completedProjects}</div>
@@ -146,10 +157,12 @@ const ContractorDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Budget</CardTitle>
-                <CreditCard className="h-4 w-4 text-green-600" />
+                <div className="p-2 bg-gradient-to-r from-[#1a472a]/10 to-[#2d8659]/10 rounded-lg">
+                  <CreditCard className="h-4 w-4 text-[#2d8659]" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalBudget)}</div>
@@ -161,11 +174,12 @@ const ContractorDashboard = () => {
 
         {/* Projects Grid */}
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
             <h2 className="text-xl font-semibold text-gray-900">Your Projects</h2>
             {projects.length > 0 && (
               <Link to="/contractor/projects">
-                <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                <Button variant="outline" 
+                  className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5">
                   View All Projects
                 </Button>
               </Link>
@@ -173,9 +187,11 @@ const ContractorDashboard = () => {
           </div>
 
           {projects.length === 0 ? (
-            <Card className="bg-white border-gray-200">
-              <CardContent className="text-center py-12">
-                <Building className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+            <Card className="bg-white border-gray-100 shadow-sm">
+              <CardContent className="text-center py-16">
+                <div className="bg-gradient-to-r from-[#1a472a]/5 to-[#2d8659]/5 rounded-full p-4 w-20 h-20 mx-auto mb-6">
+                  <Building className="h-12 w-12 text-[#2d8659]" />
+                </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No Projects Found</h3>
                 <p className="text-gray-600 mb-6">
                   You don't have any projects yet. Create your first project to get started.
@@ -185,7 +201,7 @@ const ContractorDashboard = () => {
                   <p>Email: {user?.email}</p>
                 </div>
                 <Link to="/contractor/create-project">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white mt-4">
+                  <Button className="bg-gradient-to-r from-[#1a472a] to-[#2d8659] hover:from-[#15391f] hover:to-[#246b47] text-white mt-4">
                     Create Your First Project
                   </Button>
                 </Link>
@@ -194,8 +210,9 @@ const ContractorDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map((project) => (
-                <Card key={project.id} className="bg-white border-gray-200 hover:border-blue-400/50 transition-colors">
-                  <CardHeader>
+                <Card key={project.id} 
+                  className="bg-white border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-[#2d8659]/30">
+                  <CardHeader className="bg-gradient-to-r from-[#1a472a]/5 to-[#2d8659]/5">
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-gray-900 text-lg">{project.name}</CardTitle>
@@ -206,7 +223,7 @@ const ContractorDashboard = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-6">
                     {/* Project Image */}
                     <div className="aspect-video bg-gray-700 rounded-lg overflow-hidden">
                       <img 
@@ -227,7 +244,7 @@ const ContractorDashboard = () => {
                       </div>
                       <Progress 
                         value={project.progress ? project.progress : 0} 
-                        className="h-3"
+                        className="h-2 bg-gray-100"
                       />
                     </div>
 

@@ -168,58 +168,55 @@ const CreateProject = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center space-x-4">
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/contractor/projects')}
-          className="border-gray-700 hover:bg-gray-800"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Projects
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-white">Create New Project</h1>
-          <p className="text-gray-400">Add a new construction project to your portfolio</p>
+    <div className="p-6 space-y-6 w-full">
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-[#1a472a]/5 to-[#2d8659]/5 rounded-2xl p-6 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Create New Project</h1>
+            <p className="text-gray-600">Add a new construction project to your portfolio</p>
+          </div>
         </div>
       </div>
 
-      <Card className="bg-gray-900 border-gray-800 max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center">
-            <Plus className="h-5 w-5 mr-2" />
+      <Card className="bg-white border-gray-100 shadow-sm w-full">
+        <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-[#1a472a]/5 to-[#2d8659]/5">
+          <CardTitle className="text-gray-900 flex items-center">
+            <Plus className="h-5 w-5 mr-2 text-[#2d8659]" />
             Project Details
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Main Project Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-200">Project Name *</Label>
+                <Label htmlFor="name" className="text-gray-700 font-medium">Project Name *</Label>
                 <Input
                   id="name"
                   value={formData.name || ''}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g., Sunrise Villas"
-                  className="bg-gray-800 border-gray-700 text-white"
+                  className="border-gray-200 focus:border-[#2d8659] focus:ring-[#2d8659]/20"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-gray-200">Location *</Label>
+                <Label htmlFor="location" className="text-gray-700 font-medium">Location *</Label>
                 <Input
                   id="location"
                   value={formData.location || ''}
                   onChange={(e) => setFormData({...formData, location: e.target.value})}
                   placeholder="e.g., Whitefield, Bangalore"
-                  className="bg-gray-800 border-gray-700 text-white"
+                  className="border-gray-200 focus:border-[#2d8659] focus:ring-[#2d8659]/20"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status" className="text-gray-200">Initial Status</Label>
+                <Label htmlFor="status" className="text-gray-700 font-medium">Initial Status</Label>
                 <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
                   <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                     <SelectValue />
@@ -233,31 +230,31 @@ const CreateProject = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="budget" className="text-gray-200">Total Budget (₹) *</Label>
+                <Label htmlFor="budget" className="text-gray-700 font-medium">Total Budget (₹) *</Label>
                 <Input
                   id="budget"
                   type="number"
                   value={formData.totalBudget}
                   onChange={(e) => setFormData({...formData, totalBudget: e.target.value})}
                   placeholder="e.g., 4500000"
-                  className="bg-gray-800 border-gray-700 text-white"
+                  className="border-gray-200 focus:border-[#2d8659] focus:ring-[#2d8659]/20"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="completion" className="text-gray-200">Estimated Completion</Label>
+                <Label htmlFor="completion" className="text-gray-700 font-medium">Estimated Completion</Label>
                 <Input
                   id="completion"
                   type="date"
                   value={formData.estimatedCompletion || ''}
                   onChange={(e) => setFormData({...formData, estimatedCompletion: e.target.value})}
-                  className="bg-gray-800 border-gray-700 text-white"
+                  className="border-gray-200 focus:border-[#2d8659] focus:ring-[#2d8659]/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="customer" className="text-gray-200">Assign Customer</Label>
+                <Label htmlFor="customer" className="text-gray-700 font-medium">Assign Customer</Label>
                 <Select value={formData.customerId} onValueChange={(value) => setFormData({...formData, customerId: value})}>
                   <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                     <SelectValue placeholder="Select customer" />
@@ -274,26 +271,29 @@ const CreateProject = () => {
               </div>
             </div>
 
-            <div className="space-y-2 border-t border-gray-800 pt-6 mt-6">
-              <div className="flex items-center mb-4">
-                <User className="h-5 w-5 mr-2 text-blue-400" />
-                <h3 className="text-lg font-medium text-white">Site Manager Details</h3>
+            {/* Site Manager Section */}
+            <div className="space-y-4 border-t border-gray-100 pt-8 mt-8">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-[#1a472a]/10 to-[#2d8659]/10">
+                  <User className="h-5 w-5 text-[#2d8659]" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">Site Manager Details</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="siteManagerName" className="text-gray-200">Site Manager Name</Label>
+                  <Label htmlFor="siteManagerName" className="text-gray-700 font-medium">Site Manager Name</Label>
                   <Input
                     id="siteManagerName"
                     value={formData.siteManagerName || ''}
                     onChange={(e) => setFormData({...formData, siteManagerName: e.target.value})}
                     placeholder="Enter name"
-                    className="bg-gray-800 border-gray-700 text-white"
+                    className="border-gray-200 focus:border-[#2d8659] focus:ring-[#2d8659]/20"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="siteManagerEmail" className="text-gray-200">Site Manager Email</Label>
+                  <Label htmlFor="siteManagerEmail" className="text-gray-700 font-medium">Site Manager Email</Label>
                   <Select
                     value={formData.siteManagerEmail}
                     onValueChange={(value) => {
@@ -318,36 +318,35 @@ const CreateProject = () => {
                   </Select>
                 </div>
               </div>
-              
-              <p className="text-xs text-gray-500 mt-2">
-                * If left empty, a random site manager will be assigned
-              </p>
             </div>
 
+            {/* Description Section */}
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-gray-200">Project Description</Label>
+              <Label htmlFor="description" className="text-gray-700 font-medium">Project Description</Label>
               <Textarea
                 id="description"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 placeholder="Brief description of the project..."
-                className="bg-gray-800 border-gray-700 text-white min-h-[100px]"
+                className="min-h-[120px] border-gray-200 focus:border-[#2d8659] focus:ring-[#2d8659]/20"
               />
             </div>
 
-            <div className="flex gap-4 pt-4">
+            {/* Action Buttons */}
+            <div className="flex gap-4 pt-6 border-t border-gray-100">
               <Button 
                 type="submit" 
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-gradient-to-r from-[#1a472a] to-[#2d8659] hover:from-[#15391f] hover:to-[#246b47] text-white px-8"
                 disabled={accessDenied}
               >
+                <Plus className="h-4 w-4 mr-2" />
                 Create Project
               </Button>
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => navigate('/contractor/projects')}
-                className="border-gray-700 hover:bg-gray-800"
+                className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5"
               >
                 Cancel
               </Button>

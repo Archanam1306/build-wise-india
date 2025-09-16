@@ -18,8 +18,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <Sidebar />
         </div>
 
-        <main className="flex-1 w-full pt-4"> {/* Added top padding */}
-          <div className="bg-gray-50 rounded-2xl p-6 min-h-[calc(100vh-100px)]"> {/* Adjusted min-height */}
+        <main className="flex-1 w-full"> {/* Added top padding */}
+          <div className="bg-gray-50 rounded-2xl min-h-[calc(100vh-100px)]"> {/* Adjusted min-height */}
             {children}
           </div>
         </main>
